@@ -1,0 +1,17 @@
+import "sapiddk.idl";
+
+[
+        uuid(DC302A5D-CA42-4524-B470-1BF416B4609E),
+        version(1.0),
+        helpstring("Python SAPI TTS Type Library"),
+]
+library PySAPILib
+{
+        importlib("stdole32.tlb");
+
+        [uuid(6CF33633-106B-4341-AFF3-A7D6339D4269)]
+        coclass TTSEngine {
+                [default] interface ISpTTSEngine;
+                interface ISpObjectWithToken;
+        };
+};
