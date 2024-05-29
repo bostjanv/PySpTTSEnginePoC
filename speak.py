@@ -1,5 +1,8 @@
 import sys
 import win32com.client
+import ctypes
+
+INFINITE = ctypes.c_ulong(-1)
 
 
 def get_voices(sapi):
@@ -39,7 +42,16 @@ def main():
         return
 
     sapi.Voice = voice
-    sapi.Speak("Open the pod-bay doors, Hal.")
+
+    sapi.Speak("Open the pod-bay doors, Hal.", 1)
+    # print("Waiting until done")
+    # sapi.WaitUntilDone(-1)
+
+    sapi.Speak("Open the pod-bay doors, Hal.", 1)
+    # print("Waiting until done")
+    # sapi.WaitUntilDone(-1)
+
+    print("Success!")
 
 
 main()

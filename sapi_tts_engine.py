@@ -14,11 +14,14 @@ import ctypes
 import comtypes.server.localserver
 from comtypes.hresult import S_OK
 
+# from comtypes.client import GetModule
+# GetModule("pysapi.tlb")
 from comtypes.gen.PySAPILib import (
     TTSEngine, WAVEFORMATEX, SPVTEXTFRAG, SPEVENT
 )
 
 # helper functions
+
 def make_wave_format():
     wave_format = WAVEFORMATEX()
     wave_format.wFormatTag = WAVE_FORMAT_PCM
@@ -54,7 +57,6 @@ SPDFID_WaveFormatEx = comtypes.GUID("{C31ADBAE-527F-4ff5-A230-F62BB61FF70C}")
 WAVE_FORMAT_PCM = 1
 SPET_LPARAM_IS_UNDEFINED = 0
 SPEI_SENTENCE_BOUNDARY = 7
-WAVE_FORMAT = make_wave_format()
 
 
 class TTSEngineImpl(TTSEngine):
@@ -70,6 +72,8 @@ class TTSEngineImpl(TTSEngine):
     def __init__(self):
         print(f"Initializing {__class__._reg_desc_}\n")
         self.data = load_wav("hal.wav")
+        ctypes.windll.ole32.CoTaskMemAlloc.argtypes = [ctypes.c_size_t]
+        ctypes.windll.ole32.CoTaskMemAlloc.restype = ctypes.c_void_p
 
     def ISpTTSEngine_Speak(self, this, speak_flags, format_id, wave_format, text_frag_list, output_site):
         """ HRESULT Speak
@@ -116,7 +120,7 @@ class TTSEngineImpl(TTSEngine):
         num_bytes = len(self.data)
         bytes_written = output_site.Write(self.data, num_bytes)
         if bytes_written != num_bytes:
-            print("bytes_writen != num_bytes")
+            print("bytes_written != num_bytes")
 
         print("Speak END")
 
@@ -134,15 +138,19 @@ class TTSEngineImpl(TTSEngine):
 
         if not target_fmt_id:
             output_format_id[0] = SPDFID_WaveFormatEx
-            # We current have it as a global variable, but WAVE_FORMAT should probably
-            # be allocated with CoTaskMemAlloc (as per SAPI documentation).
-            output_wave_format[0] = ctypes.pointer(WAVE_FORMAT)
+            buffer = ctypes.windll.ole32.CoTaskMemAlloc(ctypes.sizeof(WAVEFORMATEX))
+            ctypes.memmove(buffer, ctypes.pointer(make_wave_format()), ctypes.sizeof(WAVEFORMATEX))
+            wave_format=ctypes.cast(buffer, ctypes.POINTER(WAVEFORMATEX))
+            output_wave_format[0] = wave_format
         else:
             print(f"target_fmt_id={target_fmt_id[0]}")
             print_wave_format(target_wave_format[0])
 
-            output_format_id[0] = SPDFID_WaveFormatEx
-            output_wave_format[0] = ctypes.pointer(WAVE_FORMAT)
+            output_format_id[0]=SPDFID_WaveFormatEx
+            buffer = ctypes.windll.ole32.CoTaskMemAlloc(ctypes.sizeof(WAVEFORMATEX))
+            ctypes.memmove(buffer, ctypes.pointer(make_wave_format()), ctypes.sizeof(WAVEFORMATEX))
+            wave_format = ctypes.cast(buffer, ctypes.POINTER(WAVEFORMATEX))
+            output_wave_format[0] = wave_format
 
         print("GetOutputFormat END")
 
@@ -188,7 +196,7 @@ def register_voice(clsid, id, name, language, gender, vendor):
 
         # Set the attributes of the voice
         winreg.SetValueEx(key, None, 0, winreg.REG_SZ, name)
-        winreg.SetValueEx(key, "409", 0, winreg.REG_SZ, language)
+        winreg.SetValueEx(key, "409", 0, winreg.REG_SZ, name)
         winreg.SetValueEx(key, "CLSID", 0, winreg.REG_SZ, clsid)
 
         # Create the registry key for the attributes
